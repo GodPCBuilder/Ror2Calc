@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RoR2 Stat Calc</title>
+<style>
+:root{
+  --bg:#0e1116; --panel:#171b22; --panel2:#1e232c; --line:#2a303b;
+  --txt:#e6e8eb; --dim:#8b93a1; --acc:#f2b84b; --up:#5fd38a; --down:#ef6b6b;
+  --t-common:#e8e8e8; --t-uncommon:#7ed957; --t-legendary:#ff5a4f;
+  --t-boss:#f5d442; --t-lunar:#5aa8ff; --t-void:#c77dff;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:linear-gradient(#0e1116,#0e1116ee);padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+h1{margin:0;font-size:17px;letter-spacing:.04em;text-transform:uppercase}
+h1 span{color:var(--acc)}
+.mini{display:flex;gap:12px;margin-top:6px;font-size:12.5px;color:var(--dim);overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+.mini b{color:var(--txt);font-variant-numeric:tabular-nums}
+main{padding:12px 14px 80px;max-width:900px;margin:0 auto}
+section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);display:flex;justify-content:space-between;align-items:center}
+.chars{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chars::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font:inherit;font-size:14px}
+.chip.on{border-color:var(--acc);color:#111;background:var(--acc);font-weight:600}
+.lvl{display:flex;align-items:center;gap:10px;margin-top:12px}
+.lvl input[type=range]{flex:1;accent-color:var(--acc)}
+.lvl .n{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.lvl button,.qty button{width:34px;height:34px;border:0;background:var(--panel2);color:var(--txt);font-size:18px}
+.lvl input[type=number]{width:52px;height:34px;border:0;background:#0b0d11;color:var(--txt);text-align:center;font:inherit;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:620px){.stats{grid-template-columns:repeat(3,1fr)}}
+.stat{background:var(--panel2);border-radius:10px;padding:9px 10px;position:relative}
+.stat .k{font-size:12px;color:var(--dim)}
+.stat .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .s{font-size:11.5px;color:var(--dim);min-height:1em}
+.stat .d{position:absolute;right:8px;top:8px;font-size:11.5px;font-weight:700;opacity:0;transition:opacity .6s}
+.stat .d.show{opacity:1;transition:none}
+.stat .d.up{color:var(--up)} .stat .d.down{color:var(--down)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-top:10px}
+.toggle input{accent-color:var(--acc);width:18px;height:18px}
+.situ{margin:10px 0 0;padding:0;list-style:none;font-size:13px;color:var(--dim)}
+.situ li{padding:3px 0;border-top:1px dashed var(--line)}
+.situ li:first-child{border-top:0}
+.search{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#0b0d11;color:var(--txt);font:inherit}
+.tabs{display:flex;gap:6px;margin:10px 0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--dim);font:inherit;font-size:13px}
+.tab.on{color:var(--txt);border-color:var(--txt)}
+.items{display:flex;flex-direction:column;gap:6px}
+.item{display:flex;align-items:center;gap:10px;background:var(--panel2);border-radius:10px;padding:8px 8px 8px 10px;border-left:4px solid var(--tc)}
+.item .info{flex:1;min-width:0}
+.item .nm{font-weight:600;color:var(--tc)}
+.item .ds{font-size:12.5px;color:var(--dim)}
+.qty{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:0 0 auto}
+.qty span{min-width:30px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.qty button:active,.lvl button:active{background:var(--line)}
+.inv{display:flex;flex-wrap:wrap;gap:6px}
+.inv .b{font:inherit;font-size:13px;background:var(--panel2);cursor:pointer;padding:5px 9px;border-radius:8px;background:var(--panel2);border:1px solid var(--tc);color:var(--tc);font-size:13px}
+.inv .b b{color:var(--txt);margin-left:4px}
+.empty{color:var(--dim);font-size:13px}
+.link{background:none;border:0;color:var(--acc);font:inherit;font-size:12px;text-transform:none;letter-spacing:0}
+
+.skills{display:flex;flex-direction:column;gap:6px}
+.sk{background:var(--panel2);border-radius:10px;padding:8px 10px}
+.sk .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.sk .slot{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
+.sk .nm{font-weight:600}
+.sk .pc{font-size:12px;color:var(--dim);white-space:nowrap}
+.sk .row{display:flex;gap:14px;margin-top:4px;font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.sk .row span{font-size:12px;color:var(--dim)}
+.sk .row b{font-size:15px;color:var(--txt);margin-left:3px}
+.sk .row .c b{color:var(--acc)}
+.sk .row .dps b{color:var(--up)}
+.sk .near{color:var(--t-common);background:#ffffff14;padding:1px 6px;border-radius:6px;letter-spacing:.04em}
+.sk .nt{font-size:12px;color:var(--dim);margin-top:2px}
+
+.modal{position:fixed;inset:0;z-index:20;background:#000a;display:none;align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+@media(min-width:620px){.modal{align-items:center}}
+.dlg{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--tc);border-radius:16px 16px 0 0;padding:16px}
+@media(min-width:620px){.dlg{border-radius:16px}}
+.dlg .nm{font-weight:700;font-size:17px;color:var(--tc)}
+.dlg .ds{color:var(--dim);font-size:13px;margin:2px 0 14px}
+.dlg .big{display:flex;align-items:center;justify-content:center;gap:10px}
+.dlg .big button{width:52px;height:52px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-size:24px}
+.dlg .big input{width:90px;height:52px;border-radius:12px;border:1px solid var(--line);background:#0b0d11;color:var(--txt);text-align:center;font:inherit;font-size:22px;font-weight:700}
+.dlg .acts{display:flex;gap:8px;margin-top:16px}
+.dlg .acts button{flex:1;height:44px;border-radius:10px;border:1px solid var(--line);font:inherit;font-weight:600}
+.dlg .rm{background:transparent;color:var(--down);border-color:#ef6b6b66!important}
+.dlg .ok{background:var(--acc);color:#111;border-color:var(--acc)!important}
+footer{color:var(--dim);font-size:11.5px;text-align:center;padding:0 14px 20px}
+</style>
+</head>
+<body>
+<header><h1>Risk of Rain 2 · <span>Stat Calc</span></h1><div class="mini" id="mini"></div></header>
+<main>
+  <section>
+    <h2>Sopravvissuto</h2>
+    <div class="chars" id="chars"></div>
+    <div class="lvl">
+      <span style="font-size:13px;color:var(--dim)">Livello</span>
+      <input type="range" id="lvlR" min="1" max="99" value="1">
+      <div class="n"><button id="lvlM">−</button><input type="number" id="lvlN" min="1" max="99" value="1"><button id="lvlP">+</button></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Statistiche</h2>
+    <div class="stats" id="stats"></div>
+    <label class="toggle"><input type="checkbox" id="cond"> Applica bonus condizionali (fuori combattimento / in sprint)</label>
+    <ul class="situ" id="situ"></ul>
+  </section>
+
+  <section>
+    <h2>Abilità <span style="text-transform:none;letter-spacing:0;font-size:11.5px">normale · critico · medio · DPS</span></h2>
+    <div class="skills" id="skills"></div>
+  </section>
+
+  <section>
+    <h2>Inventario <button class="link" id="clear">Svuota</button></h2>
+    <div class="inv" id="inv"></div>
+  </section>
+
+  <section>
+    <h2>Aggiungi item</h2>
+    <input class="search" id="q" placeholder="Cerca item…" autocomplete="off">
+    <div class="tabs" id="tabs"></div>
+    <div class="items" id="items"></div>
+  </section>
+</main>
+<div class="modal" id="modal">
+  <div class="dlg" id="dlg">
+    <div class="nm" id="mName"></div>
+    <div class="ds" id="mDesc"></div>
+    <div class="big"><button id="mM">−</button><input type="number" id="mN" min="0" max="999" inputmode="numeric"><button id="mP">+</button></div>
+    <div class="acts"><button class="rm" id="mRm">Rimuovi</button><button class="ok" id="mOk">Fatto</button></div>
+  </div>
+</div>
+<footer>Valori di riferimento dalla wiki di RoR2: modificabili nel file (CHARS / ITEMS / SKILLS). Il Focus Crystal si applica solo alle abilità ravvicinate; Crowbar e simili non sono inclusi. Fan tool non ufficiale.</footer>
+
+<script>
+/* ============ DATI ============ */
+// hp, hpL = vita base / per livello · rg, rgL = rigenerazione · dmg, dmgL = danno · arm = armatura · spd = velocità · jumps
+const CHARS = [
+  {id:'commando',  name:'Commando',   hp:110,hpL:33,rg:1,  rgL:0.2,dmg:12,dmgL:2.4,arm:0, spd:7,jumps:1},
+  {id:'huntress',  name:'Huntress',   hp:90, hpL:27,rg:1,  rgL:0.2,dmg:12,dmgL:2.4,arm:0, spd:7,jumps:1},
+  {id:'bandit',    name:'Bandit',     hp:110,hpL:33,rg:1,  rgL:0.2,dmg:12,dmgL:2.4,arm:0, spd:7,jumps:1},
+  {id:'mult',      name:'MUL-T',      hp:200,hpL:60,rg:1,  rgL:0.2,dmg:11,dmgL:2.2,arm:12,spd:7,jumps:1},
+  {id:'engi',      name:'Engineer',   hp:130,hpL:39,rg:1,  rgL:0.2,dmg:14,dmgL:2.8,arm:0, spd:7,jumps:1},
+  {id:'arti',      name:'Artificer',  hp:110,hpL:33,rg:1,  rgL:0.2,dmg:12,dmgL:2.4,arm:0, spd:7,jumps:1},
+  {id:'merc',      name:'Mercenary',  hp:110,hpL:33,rg:1,  rgL:0.2,dmg:12,dmgL:2.4,arm:20,spd:7,jumps:2},
+  {id:'rex',       name:'REX',        hp:130,hpL:39,rg:1,  rgL:0.2,dmg:12,dmgL:2.4,arm:20,spd:7,jumps:1},
+  {id:'loader',    name:'Loader',     hp:160,hpL:48,rg:2.5,rgL:0.5,dmg:12,dmgL:2.4,arm:20,spd:7,jumps:1},
+  {id:'acrid',     name:'Acrid',      hp:160,hpL:48,rg:2.5,rgL:0.5,dmg:15,dmgL:3,  arm:20,spd:7,jumps:1},
+  {id:'captain',   name:'Captain',    hp:110,hpL:33,rg:1,  rgL:0.2,dmg:12,dmgL:2.4,arm:0, spd:7,jumps:1},
+  {id:'railgunner',name:'Railgunner', hp:110,hpL:33,rg:1,  rgL:0.2,dmg:12,dmgL:2.4,arm:0, spd:7,jumps:1},
+  {id:'voidfiend', name:'Void Fiend', hp:110,hpL:33,rg:1,  rgL:0.2,dmg:12,dmgL:2.4,arm:0, spd:7,jumps:1},
+];
+
+const TIERS = {
+  common:{n:'Comuni',c:'var(--t-common)'}, uncommon:{n:'Non comuni',c:'var(--t-uncommon)'},
+  legendary:{n:'Leggendari',c:'var(--t-legendary)'}, boss:{n:'Boss',c:'var(--t-boss)'},
+  lunar:{n:'Lunari',c:'var(--t-lunar)'}, void:{n:'Void',c:'var(--t-void)'}
+};
+const pct = x => (Math.round(x*1000)/10).toLocaleString('it-IT')+'%';
+const hyp = (k,n) => 1 - 1/(1+k*n);
+
+// ogni item: apply(s, n) modifica l'accumulatore s
+const ITEMS = [
+  // --- COMUNI ---
+  {id:'syringe',t:'common',name:"Soldier's Syringe",d:'+15% velocità d\'attacco',apply:(s,n)=>s.as+=.15*n},
+  {id:'glasses',t:'common',name:"Lens-Maker's Glasses",d:'+10% probabilità di critico',apply:(s,n)=>s.crit+=10*n},
+  {id:'hoof',t:'common',name:"Paul's Goat Hoof",d:'+14% velocità di movimento',apply:(s,n)=>s.ms+=.14*n},
+  {id:'steak',t:'common',name:'Bison Steak',d:'+25 vita massima',apply:(s,n)=>s.flatHP+=25*n},
+  {id:'mocha',t:'common',name:'Mocha',d:'+7,5% vel. attacco, +7% vel. movimento',apply:(s,n)=>{s.as+=.075*n;s.ms+=.07*n}},
+  {id:'slug',t:'common',name:'Cautious Slug',d:'+3 rigen/s fuori combattimento (scala col livello)',apply:(s,n)=>s.condRegen+=3*n},
+  {id:'tougher',t:'common',name:'Tougher Times',d:'15% prob. di bloccare danni (iperbolico)',apply:(s,n)=>s.block+=n},
+  {id:'plate',t:'common',name:'Repulsion Armor Plate',d:'−5 danni da ogni colpo (min. 1)',apply:(s,n)=>s.plate+=5*n},
+  {id:'psg',t:'common',name:'Personal Shield Generator',d:'Scudo pari all\'8% della vita massima',apply:(s,n)=>s.shieldFrac+=.08*n},
+  {id:'energy',t:'common',name:'Energy Drink',d:'+25% velocità in sprint',apply:(s,n)=>s.sprint+=.25*n},
+  {id:'dagger',t:'common',name:'Tri-Tip Dagger',d:'10% prob. di sanguinamento',apply:(s,n)=>s.situ.push(`Sanguinamento: ${Math.min(100,10*n)}% di probabilità per colpo`)},
+  {id:'crowbar',t:'common',name:'Crowbar',d:'+75% danno a nemici sopra il 90% di vita',apply:(s,n)=>s.situ.push(`Crowbar: +${75*n}% danno a nemici con vita >90%`)},
+  {id:'focus',t:'common',name:'Focus Crystal',d:'+20% danno a nemici entro 13 m',apply:(s,n)=>s.close+=.2*n},
+  {id:'apr',t:'common',name:'Armor-Piercing Rounds',d:'+20% danno contro i boss',apply:(s,n)=>s.situ.push(`Armor-Piercing Rounds: +${20*n}% danno ai boss`)},
+  {id:'stun',t:'common',name:'Stun Grenade',d:'5% prob. di stordire (iperbolico)',apply:(s,n)=>s.situ.push(`Stordimento: ${pct(hyp(.05,n))} di probabilità per colpo`)},
+  {id:'medkit',t:'common',name:'Medkit',d:'Cura 20 + 5% vita 2 s dopo un danno',apply:(s,n)=>s.situ.push(`Medkit: cura 20 + ${5*n}% vita 2 s dopo un danno`)},
+  {id:'brooch',t:'common',name:'Topaz Brooch',d:'+15 barriera per uccisione',apply:(s,n)=>s.situ.push(`Topaz Brooch: +${15*n} barriera per uccisione`)},
+  // --- NON COMUNI ---
+  {id:'infusion',t:'uncommon',name:'Infusion',d:'+1 vita per uccisione, fino a 100 (qui al massimo)',apply:(s,n)=>s.flatHP+=100*n},
+  {id:'predatory',t:'uncommon',name:'Predatory Instincts',d:'+5% critico; i critici danno vel. d\'attacco',apply:(s,n)=>{s.critOnce.add('pred');s.situ.push(`Predatory Instincts: fino a ${1+2*n} cariche da +12% vel. attacco dopo i critici`)}},
+  {id:'scythe',t:'uncommon',name:"Harvester's Scythe",d:'+5% critico; cura con i critici',apply:(s,n)=>{s.critOnce.add('scythe');s.situ.push(`Harvester's Scythe: cura ${4+4*n} con ogni critico`)}},
+  {id:'feather',t:'uncommon',name:'Hopoo Feather',d:'+1 salto',apply:(s,n)=>s.jumps+=n},
+  {id:'whip',t:'uncommon',name:'Red Whip',d:'+30% vel. movimento fuori combattimento',apply:(s,n)=>s.condMs+=.3*n},
+  {id:'buckler',t:'uncommon',name:'Rose Buckler',d:'+30 armatura in sprint',apply:(s,n)=>s.condArmor+=30*n},
+  {id:'fuel',t:'uncommon',name:'Fuel Cell',d:'+1 carica equipaggiamento, −15% ricarica',apply:(s,n)=>{s.equip+=n;s.equipCd*=Math.pow(.85,n)}},
+  {id:'seed',t:'uncommon',name:'Leeching Seed',d:'Cura 1 per colpo',apply:(s,n)=>s.situ.push(`Leeching Seed: cura ${n} vita per colpo`)},
+  {id:'guillotine',t:'uncommon',name:'Old Guillotine',d:'Uccide le élite sotto il 13% di vita',apply:(s,n)=>s.situ.push(`Old Guillotine: giustizia élite sotto il ${pct(hyp(.13,n))} di vita`)},
+  // --- LEGGENDARI ---
+  {id:'alien',t:'legendary',name:'Alien Head',d:'−25% tempo di ricarica abilità',apply:(s,n)=>s.cd*=Math.pow(.75,n)},
+  {id:'rack',t:'legendary',name:'Rejuvenation Rack',d:'+100% cure',apply:(s,n)=>s.heal+=n},
+  {id:'clover',t:'legendary',name:'57 Leaf Clover',d:'+1 fortuna',apply:(s,n)=>s.luck+=n},
+  {id:'afterburner',t:'legendary',name:'Hardlight Afterburner',d:'+2 cariche utilità, −33% ricarica utilità',apply:(s,n)=>{s.util+=2*n;s.situ.push(`Afterburner: +${2*n} cariche dell'abilità utilità, ricarica utilità ×${(Math.pow(2/3,n)).toFixed(2)}`)}},
+  {id:'scope',t:'legendary',name:'Laser Scope',d:'+5% critico, +100% danno critico',apply:(s,n)=>{s.critOnce.add('scope');s.critDmg+=n}},
+  {id:'aegis',t:'legendary',name:'Aegis',d:'50% della cura in eccesso diventa barriera',apply:(s,n)=>s.situ.push(`Aegis: ${50*n}% della cura in eccesso → barriera`)},
+  // --- BOSS ---
+  {id:'knurl',t:'boss',name:'Titanic Knurl',d:'+40 vita, +1,6 rigen/s (scala col livello)',apply:(s,n)=>{s.flatHP+=40*n;s.flatRegen+=1.6*n}},
+  {id:'pearl',t:'boss',name:'Pearl',d:'+10% vita massima',apply:(s,n)=>s.hpMult+=.1*n},
+  {id:'irradiant',t:'boss',name:'Irradiant Pearl',d:'+10% a tutte le statistiche',apply:(s,n)=>{const k=.1*n;s.hpMult+=k;s.dmgMult+=k;s.as+=k;s.ms+=k;s.crit+=10*n;s.regenMult+=k;s.armorMult+=k}},
+  {id:'spleen',t:'boss',name:'Shatterspleen',d:'+5% critico; i critici fanno sanguinare',apply:(s,n)=>{s.critOnce.add('spleen');s.situ.push('Shatterspleen: i critici fanno sanguinare, i nemici sanguinanti esplodono')}},
+  // --- LUNARI ---
+  {id:'glass',t:'lunar',name:'Shaped Glass',d:'Danno base ×2, vita massima −50%',apply:(s,n)=>{s.dmgCurse*=Math.pow(2,n);s.hpCurse*=Math.pow(.5,n)}},
+  {id:'stone',t:'lunar',name:'Stone Flux Pauldron',d:'+100% vita massima, −50% vel. movimento',apply:(s,n)=>{s.hpMult+=n;s.msReduce+=.5*n}},
+  {id:'light',t:'lunar',name:'Light Flux Pauldron',d:'−50% ricarica abilità, −50% vel. attacco',apply:(s,n)=>{s.cd*=Math.pow(.5,n);s.asReduce+=.5*n}},
+  {id:'purity',t:'lunar',name:'Purity',d:'−2 s di ricarica abilità, −1 fortuna',apply:(s,n)=>{s.cdFlat+=1+n;s.luck-=n}},
+  {id:'transcend',t:'lunar',name:'Transcendence',d:'Vita → scudo; +50% vita massima',apply:(s,n)=>{s.transc=n;s.hpMult+=.5+.25*(n-1)}},
+  {id:'corpse',t:'lunar',name:'Corpsebloom',d:'+100% cure, distribuite nel tempo',apply:(s,n)=>{s.heal+=n;s.situ.push(`Corpsebloom: cure diluite nel tempo, max ${pct(.1/n)} vita al secondo`)}},
+  // --- VOID ---
+  {id:'weeping',t:'void',name:'Weeping Fungus',d:'Cura il 2% di vita/s in sprint',apply:(s,n)=>s.situ.push(`Weeping Fungus: cura ${2*n}% vita al secondo in sprint`)},
+  {id:'lenses',t:'void',name:"Lost Seer's Lenses",d:'0,5% prob. di uccisione istantanea',apply:(s,n)=>s.situ.push(`Lost Seer's Lenses: ${Math.min(100,.5*n)}% di uccisione istantanea (non boss)`)},
+  {id:'needletick',t:'void',name:'Needletick',d:'10% prob. di Collasso',apply:(s,n)=>s.situ.push(`Needletick: ${Math.min(100,10*n)}% di applicare Collasso`)},
+  {id:'safer',t:'void',name:'Safer Spaces',d:'Blocca un colpo ogni 15 s',apply:(s,n)=>s.situ.push(`Safer Spaces: blocca un colpo, ricarica ${(15*Math.pow(.9,n-1)).toFixed(1)} s`)},
+];
+
+
+/* Abilità:
+   p  = % del danno base (numero, o [min,max] per le abilità a carica: il DPS usa la carica piena)
+   h  = colpi per uso · ps = p è danno al secondo (dur = secondi attivi; senza dur è continuo)
+   t  = secondi per uso a velocità d'attacco ×1 (esecuzione o carica) · cd = ricarica in secondi
+   m  = 1 se colpisce sempre entro 13 m (riceve il bonus del Focus Crystal)
+   n  = nota.  Tempi e ricariche sono stime: correggili qui se trovi valori diversi. */
+const P='Primaria',S='Secondaria',U='Utilità',X='Speciale';
+const SKILLS = {
+  commando:[{s:P,name:'Double Tap',p:100,t:.2},{s:S,name:'Phase Round',p:300,t:.5,cd:3,n:'perfora i nemici'},{s:S,name:'Phase Blast',m:1,p:200,h:16,t:.5,cd:3,n:'2 raffiche da 8 pallini'},
+    {s:U,name:'Tactical Dive / Slide',p:0},{s:X,name:'Suppressive Fire',p:100,h:6,t:1,cd:9,n:'stordisce'},{s:X,name:'Frag Grenade',p:700,t:.5,cd:5}],
+  huntress:[{s:P,name:'Strafe',p:150,t:.67},{s:P,name:'Flurry',p:100,h:3,t:1,n:'6 frecce se critico'},{s:S,name:'Laser Glaive',p:250,t:.5,cd:7,n:'+10% a ogni rimbalzo'},
+    {s:U,name:'Blink / Phase Blink',p:0},{s:X,name:'Arrow Rain',p:225,ps:true,dur:2,cd:12},{s:X,name:'Ballista',p:900,h:3,t:1.5,cd:12}],
+  bandit:[{s:P,name:'Burst',p:100,h:5,t:.4,n:'pallini'},{s:P,name:'Blast',p:330,t:.4},{s:S,name:'Serrated Dagger',p:360,t:.4,cd:4,n:'emorragia'},{s:S,name:'Serrated Shiv',p:240,t:.4,cd:4,n:'emorragia'},
+    {s:U,name:'Smoke Bomb',p:200,t:.3,cd:6},{s:X,name:'Lights Out',p:600,t:.6,cd:4,n:'resetta le ricariche se uccide'},{s:X,name:'Desperado',p:600,t:.6,cd:4,n:'+10% per ogni uccisione'}],
+  mult:[{s:P,name:'Auto-Nailgun',p:70,t:.1,n:'per chiodo'},{s:P,name:'Rebar Puncher',p:[600,1800],t:1.5},{s:P,name:'Scrap Launcher',p:360,t:.3,cd:1.5},{s:P,name:'Power-Saw',m:1,p:1000,ps:true,n:'continuo'},
+    {s:S,name:'Blast Canister',p:440,t:.3,cd:6,n:'220% + 5 bombette da 44%'},{s:U,name:'Transport Mode',m:1,p:250,t:1,cd:8},{s:X,name:'Retool',p:0}],
+  engi:[{s:P,name:'Bouncing Grenades',p:100,h:[2,8],t:1.5,n:'granate in base alla carica'},{s:S,name:'Pressure Mines',p:300,t:.4,cd:8,n:'×3 se cariche'},{s:S,name:'Spider Mines',p:600,t:.4,cd:8},
+    {s:U,name:'Bubble Shield',p:0},{s:U,name:'Thermal Harpoons',p:500,h:4,t:1,cd:8},
+    {s:X,name:'TR12 Gauss Auto-Turret',p:100,t:.33,n:'per torretta; copia i tuoi item'},{s:X,name:'TR58 Carbonizer Turret',p:200,ps:true,n:'per torretta; copia i tuoi item'}],
+  arti:[{s:P,name:'Flame Bolt',p:220,t:.5,cd:1.3,n:'4 cariche · incendia'},{s:P,name:'Plasma Bolt',p:280,t:.5,cd:1.3,n:'4 cariche'},{s:S,name:'Charged Nano-Bomb',p:[400,1200],t:2,cd:5},{s:S,name:'Cast Nano-Spear',p:[400,1200],t:2,cd:5},
+    {s:U,name:'Snapfreeze',p:100,t:.3,cd:12,n:'congela'},{s:U,name:'Ion Surge',p:800,t:.5,cd:8},{s:X,name:'Flamethrower',m:1,p:1000,ps:true,dur:2,cd:5,n:'2000% totale in 2 s'}],
+  merc:[{s:P,name:'Laser Sword',m:1,p:130,t:.45},{s:S,name:'Whirlwind',m:1,p:200,h:2,t:.5,cd:2.5},{s:S,name:'Rising Thunder',m:1,p:550,t:.5,cd:3},
+    {s:U,name:'Blinding Assault',m:1,p:300,h:3,t:1,cd:8,n:'fino a 3 scatti'},{s:X,name:'Eviscerate',m:1,p:110,h:8,t:1.5,cd:6,n:'circa 8 colpi'},{s:X,name:'Slicing Winds',p:100,h:8,t:.5,cd:6}],
+  rex:[{s:P,name:'DIRECTIVE: Inject',p:80,h:3,t:.6},{s:S,name:'Seed Barrage',p:450,t:.5,cd:.5,n:'costa vita'},{s:S,name:'DIRECTIVE: Drill',p:90,ps:true,dur:3,cd:5,n:'costa vita'},
+    {s:U,name:'Bramble Volley',p:550,t:.5,cd:5},{s:X,name:'Tangling Growth',p:230,ps:true,dur:4,cd:12},{s:X,name:'DIRECTIVE: Harvest',p:330,t:.5,cd:6}],
+  loader:[{s:P,name:'Knuckleboom',m:1,p:320,t:.8},{s:S,name:'Grapple Fist',p:320,t:.5,cd:5},{s:S,name:'Spiked Fist',p:320,t:.5,cd:5},
+    {s:U,name:'Charged Gauntlet',m:1,p:[600,2700],t:2,cd:5},{s:U,name:'Thunder Gauntlet',m:1,p:2100,t:2,cd:5},{s:X,name:'M551 Pylon',p:1000,t:.5,cd:20},{s:X,name:'Thunderslam',m:1,p:2000,t:1,cd:8}],
+  acrid:[{s:P,name:'Vicious Wounds',m:1,p:267,t:.6,n:'combo 200/200/400% (media 267%)'},{s:S,name:'Neurotoxin',p:240,t:.4,cd:2},{s:S,name:'Ravenous Bite',m:1,p:310,t:.4,cd:2},
+    {s:U,name:'Caustic Leap',m:1,p:320,t:1,cd:6},{s:U,name:'Frenzied Leap',m:1,p:550,t:1,cd:10},{s:X,name:'Epidemic',p:100,t:.5,cd:10,n:'si propaga tra i nemici'}],
+  captain:[{s:P,name:'Vulcan Shotgun',p:120,h:8,t:1,n:'pallini, con carica'},{s:S,name:'Power Tazer',p:100,t:.4,cd:6,n:'stordisce'},{s:U,name:'Orbital Probe',p:700,h:4,t:1.5,cd:11},{s:X,name:'Orbital Supply Beacon',p:0}],
+  railgunner:[{s:P,name:'XQR Smart Round System',p:100,t:.3},{s:S,name:'M99 Sniper',p:1000,t:1,n:'critico garantito sul punto debole'},{s:S,name:'AM Marksman',p:400,t:.5},
+    {s:U,name:'Concussion Device / Polar Field',p:0},{s:X,name:'Supercharge',p:4000,t:2,cd:12},{s:X,name:'Cryocharge',p:2000,t:2,cd:12,n:'congela'}],
+  voidfiend:[{s:P,name:'Drown',p:300,t:.5},{s:S,name:'Flood',p:[650,1100],t:.75,cd:4},{s:U,name:'Trespass',p:0},{s:X,name:'Suppress',p:0,n:'cura e passa alla forma corrotta'}],
+};
+
+/* ============ CALCOLO ============ */
+function compute(ch, L, inv, cond){
+  const s = {flatHP:0,hpMult:0,hpCurse:1,flatRegen:0,condRegen:0,regenMult:0,dmgMult:0,dmgCurse:1,
+    as:0,asReduce:0,ms:0,msReduce:0,condMs:0,sprint:0,crit:0,critOnce:new Set(),critDmg:2,armorMult:0,condArmor:0,
+    block:0,plate:0,close:0,shieldFrac:0,jumps:ch.jumps,cd:1,cdFlat:0,luck:0,heal:1,equip:1,equipCd:1,util:0,transc:0,situ:[]};
+  for(const it of ITEMS){ const n = inv[it.id]||0; if(n>0) it.apply(s,n); }
+  const lv = L-1, regenScale = 1 + .2*lv;
+  let full = (ch.hp + ch.hpL*lv + s.flatHP) * (1+s.hpMult) * s.hpCurse;
+  let shield = full*s.shieldFrac, hp = full;
+  if(s.transc){ shield += full-1; hp = 1; }
+  let regen = ((ch.rg + ch.rgL*lv) + s.flatRegen*regenScale + (cond? s.condRegen*regenScale:0)) * (1+s.regenMult);
+  if(s.transc) regen = 0;
+  const dmg = (ch.dmg + ch.dmgL*lv) * (1+s.dmgMult) * s.dmgCurse;
+  const as = (1+s.as)/(1+s.asReduce);
+  const ms = ch.spd*(1+s.ms+(cond?s.condMs:0))/(1+s.msReduce);
+  const sprint = ms*(1.45+s.sprint);
+  const critRaw = 1 + s.crit + 5*s.critOnce.size;
+  const crit = Math.min(100,critRaw);
+  const armor = (ch.arm + (cond?s.condArmor:0)) * (1+s.armorMult);
+  const dr = armor>=0 ? armor/(100+armor) : armor/(100-armor);
+  const blk = hyp(.15,s.block);
+  const ehp = (hp+shield)/(1-dr)/(1-blk);
+  const dps = dmg*as*(1 + crit/100*(s.critDmg-1));
+  const cdMult = s.cd;
+  return {close:s.close,hp,shield,regen,dmg,as,ms,sprint,crit,critRaw,critDmg:s.critDmg,armor,dr,blk,ehp,dps,
+    jumps:s.jumps,cdMult,cdFlat:s.cdFlat,luck:s.luck,heal:s.heal,plate:s.plate,equip:s.equip,equipCd:s.equipCd,situ:s.situ,
+    hasCond: s.condRegen>0||s.condMs>0||s.condArmor>0};
+}
+
+/* ============ UI ============ */
+const state = {char:'commando', level:1, inv:{}, cond:false, tier:'all', q:''};
+try{ Object.assign(state, JSON.parse(localStorage.getItem('ror2calc')||'{}')); }catch(e){}
+const save = ()=>{ try{ localStorage.setItem('ror2calc', JSON.stringify(state)); }catch(e){} };
+const $ = id => document.getElementById(id);
+const f = (x,d=1) => (Math.round(x*Math.pow(10,d))/Math.pow(10,d)).toLocaleString('it-IT');
+let prev = null;
+
+const STAT_DEFS = [
+  {k:'Vita massima', v:r=>f(r.hp,0), raw:r=>r.hp, s:r=>r.shield>0?`+ ${f(r.shield,0)} scudo`:''},
+  {k:'Rigenerazione', v:r=>f(r.regen,2)+' /s', raw:r=>r.regen, s:r=>''},
+  {k:'Danno base', v:r=>f(r.dmg,1), raw:r=>r.dmg, s:r=>''},
+  {k:'Danno ravvicinato', v:r=>f(r.dmg*(1+r.close),1), raw:r=>r.dmg*(1+r.close), s:r=>r.close?`+${f(r.close*100,0)}% rispetto al base · entro 13 m`:'uguale al base (serve Focus Crystal)'},
+  {k:'Danno critico', v:r=>f(r.dmg*r.critDmg,1), raw:r=>r.dmg*r.critDmg, s:r=>`${f(r.dmg,1)} × ${r.critDmg} (moltiplicatore critico)`},
+  {k:'Vel. d\'attacco', v:r=>'×'+f(r.as,2), raw:r=>r.as, s:r=>''},
+  {k:'Prob. critico', v:r=>f(r.crit,1)+'%', raw:r=>r.critRaw, s:r=>`Danno critico ×${r.critDmg}`+(r.critRaw>100?` · eccedenza ${f(r.critRaw-100)}%`:'')},
+  {k:'Indice DPS', v:r=>f(r.dps,1), raw:r=>r.dps, s:r=>'danno × vel. × critico'},
+  {k:'Vel. movimento', v:r=>f(r.ms,2)+' m/s', raw:r=>r.ms, s:r=>`Sprint ${f(r.sprint,2)} m/s`},
+  {k:'Armatura', v:r=>f(r.armor,0), raw:r=>r.armor, s:r=>`Riduzione danni ${pct(r.dr)}`},
+  {k:'Vita effettiva', v:r=>f(r.ehp,0), raw:r=>r.ehp, s:r=>(r.blk>0?`Blocco ${pct(r.blk)} · `:'')+(r.plate?`−${r.plate} per colpo`:'armatura + blocco')},
+  {k:'Ricarica abilità', v:r=>'×'+f(r.cdMult,3), raw:r=>-r.cdMult, s:r=>r.cdFlat?`e −${r.cdFlat} s fissi`:''},
+  {k:'Salti', v:r=>r.jumps, raw:r=>r.jumps, s:r=>''},
+  {k:'Fortuna', v:r=>(r.luck>0?'+':'')+r.luck, raw:r=>r.luck, s:r=>`Cure ×${f(r.heal,1)} · Equip. ${r.equip} car.`},
+];
+
+
+function renderSkills(r){
+  const list = SKILLS[state.char]||[];
+  const cm = r.crit/100, avgMul = 1+cm*(r.critDmg-1);
+  const rng = (a,b,d=0)=> Math.abs(a-b)<1e-9 ? f(a,d) : `${f(a,d)}–${f(b,d)}`;
+  const cdEff = cd => cd>0 ? Math.max(.5, cd*r.cdMult - r.cdFlat) : 0;
+  $('skills').innerHTML = list.map(k=>{
+    if(!k.p) return `<div class="sk"><div class="top"><div><div class="slot">${k.s}</div><div class="nm">${k.name}</div></div><div class="pc">nessun danno</div></div>${k.n?`<div class="nt">${k.n}</div>`:''}</div>`;
+    const [p0,p1] = Array.isArray(k.p)?k.p:[k.p,k.p];
+    const [h0,h1] = Array.isArray(k.h)?k.h:[k.h||1,k.h||1];
+    const cm2 = k.m ? 1+r.close : 1;
+    const val = pv=>{ const n=r.dmg*cm2*pv/100; return [n, n*r.critDmg, n*avgMul]; };
+    const a=val(p0), b=val(p1), unit=k.ps?' /s':'';
+    // --- DPS ---
+    let dps, cyc;
+    if(k.ps && !k.dur){ dps = b[2]*r.as; cyc = null; }                 // continuo, scala con vel. attacco
+    else {
+      const perUse = k.ps ? b[2]*k.dur : b[2]*h1;
+      const cast = k.ps ? k.dur : (k.t||.5)/r.as;
+      cyc = Math.max(cast, cdEff(k.cd||0));
+      dps = perUse/cyc;
+    }
+    const pctTxt = (h1>1? (h0===h1?h1:`${h0}–${h1}`)+'×':'') + (p0===p1?p0:`${p0}–${p1}`)+'%'+(k.ps?' al secondo':'');
+    const row = `<div class="row"><span>Normale<b>${rng(a[0],b[0])}${unit}</b></span><span class="c">Critico<b>${rng(a[1],b[1])}${unit}</b></span><span>Medio<b>${rng(a[2],b[2])}${unit}</b></span><span class="dps">DPS<b>${f(dps,0)}</b></span></div>`;
+    const tot = h1>1 ? `<div class="nt">Totale (${h0===h1?h1:`${h0}–${h1}`} colpi): ${rng(a[0]*h0,b[0]*h1)} normale · ${rng(a[1]*h0,b[1]*h1)} tutto critico · ${rng(a[2]*h0,b[2]*h1)} medio</div>` : '';
+    const cycTxt = cyc==null ? 'DPS continuo (scala con la vel. d\'attacco)'
+      : `Ciclo ${f(cyc,2)} s` + (k.cd? ` · ricarica ${f(cdEff(k.cd),2)} s`:'') + (k.ps?` · attiva ${k.dur} s`:` · uso ${f((k.t||.5)/r.as,2)} s`) + (Array.isArray(k.p)||Array.isArray(k.h)?' · carica piena':'');
+    return `<div class="sk"><div class="top"><div><div class="slot">${k.s}${h1>1?' · per colpo':''}${k.m?` · <span class="near">ravvicinata${r.close?` +${f(r.close*100,0)}%`:''}</span>`:''}</div><div class="nm">${k.name}</div></div><div class="pc">${pctTxt}</div></div>${row}${tot}<div class="nt">${cycTxt}${k.n?' · '+k.n:''}</div></div>`;
+  }).join('') || '<span class="empty">Nessuna abilità definita.</span>';
+}
+function renderChars(){
+  $('chars').innerHTML = CHARS.map(c=>`<button class="chip ${c.id===state.char?'on':''}" data-c="${c.id}">${c.name}</button>`).join('');
+}
+function renderStats(){
+  const ch = CHARS.find(c=>c.id===state.char)||CHARS[0];
+  const r = compute(ch, state.level, state.inv, state.cond);
+  $('stats').innerHTML = STAT_DEFS.map((d,i)=>{
+    let delta='';
+    if(prev){ const a=d.raw(prev), b=d.raw(r), diff=b-a;
+      if(Math.abs(diff)>1e-9){ const shown = d.k==='Ricarica abilità'? (b>a?'▼':'▲') : (diff>0?'+':'')+f(diff,2);
+        delta=`<span class="d show ${diff>0?'up':'down'}">${shown}</span>`; } }
+    return `<div class="stat"><div class="k">${d.k}</div><div class="v">${d.v(r)}</div><div class="s">${d.s(r)}</div>${delta}</div>`;
+  }).join('');
+  $('mini').innerHTML = `<span>${ch.name} L${state.level}</span><span>❤ <b>${f(r.hp,0)}${r.shield>0?'+'+f(r.shield,0):''}</b></span><span>⚔ <b>${f(r.dmg,1)}</b></span><span>💥 <b>${f(r.dmg*r.critDmg,1)}</b></span><span>⏱ <b>×${f(r.as,2)}</b></span><span>✦ <b>${f(r.crit,0)}%</b></span><span>DPS <b>${f(r.dps,0)}</b></span>`;
+  renderSkills(r);
+  prev = r;
+  requestAnimationFrame(()=>setTimeout(()=>document.querySelectorAll('.stat .d').forEach(e=>e.classList.remove('show')),900));
+  $('situ').innerHTML = r.situ.map(x=>`<li>${x}</li>`).join('');
+  $('cond').parentElement.style.display = r.hasCond ? '' : 'none';
+}
+function renderInv(){
+  const owned = ITEMS.filter(i=>state.inv[i.id]>0);
+  $('inv').innerHTML = owned.length ? owned.map(i=>`<button class="b" data-e="${i.id}" style="--tc:${TIERS[i.t].c}">${i.name}<b>×${state.inv[i.id]}</b></button>`).join('')
+    : '<span class="empty">Nessun item. Aggiungili qui sotto.</span>';
+}
+function renderTabs(){
+  const t = [['all','Tutti'],...Object.entries(TIERS).map(([k,v])=>[k,v.n])];
+  $('tabs').innerHTML = t.map(([k,n])=>`<button class="tab ${state.tier===k?'on':''}" data-t="${k}">${n}</button>`).join('');
+}
+function renderItems(){
+  const q = state.q.trim().toLowerCase();
+  const list = ITEMS.filter(i=>(state.tier==='all'||i.t===state.tier) && (!q || i.name.toLowerCase().includes(q) || i.d.toLowerCase().includes(q)));
+  $('items').innerHTML = list.map(i=>`<div class="item" style="--tc:${TIERS[i.t].c}">
+      <div class="info"><div class="nm">${i.name}</div><div class="ds">${i.d}</div></div>
+      <div class="qty"><button data-i="${i.id}" data-d="-1">−</button><span>${state.inv[i.id]||0}</span><button data-i="${i.id}" data-d="1">+</button></div>
+    </div>`).join('') || '<span class="empty">Nessun item trovato.</span>';
+}
+function setLevel(v){
+  v = Math.max(1,Math.min(99,parseInt(v)||1)); state.level=v; $('lvlR').value=v; $('lvlN').value=v; save(); renderStats();
+}
+function all(){ renderChars(); renderStats(); renderInv(); renderTabs(); renderItems(); }
+
+$('chars').onclick = e=>{ const b=e.target.closest('[data-c]'); if(!b) return; state.char=b.dataset.c; save(); renderChars(); renderStats(); };
+$('lvlR').oninput = e=>setLevel(e.target.value);
+$('lvlN').onchange = e=>setLevel(e.target.value);
+$('lvlM').onclick = ()=>setLevel(state.level-1);
+$('lvlP').onclick = ()=>setLevel(state.level+1);
+$('cond').onchange = e=>{ state.cond=e.target.checked; save(); renderStats(); };
+$('tabs').onclick = e=>{ const b=e.target.closest('[data-t]'); if(!b) return; state.tier=b.dataset.t; renderTabs(); renderItems(); };
+$('q').oninput = e=>{ state.q=e.target.value; renderItems(); };
+$('items').onclick = e=>{
+  const b=e.target.closest('[data-i]'); if(!b) return;
+  setQty(b.dataset.i, (state.inv[b.dataset.i]||0)+(+b.dataset.d));
+};
+
+let editing = null;
+function setQty(id, n){
+  n = Math.max(0, Math.min(999, parseInt(n)||0));
+  if(n) state.inv[id]=n; else delete state.inv[id];
+  save(); renderStats(); renderInv(); renderItems();
+  return n;
+}
+function openEdit(id){
+  const it = ITEMS.find(i=>i.id===id); if(!it) return;
+  editing = id;
+  $('dlg').style.setProperty('--tc', TIERS[it.t].c);
+  $('mName').textContent = it.name; $('mDesc').textContent = it.d;
+  $('mN').value = state.inv[id]||0;
+  $('modal').classList.add('open');
+}
+function closeEdit(){ editing=null; $('modal').classList.remove('open'); }
+function stepEdit(d){
+  if(!editing) return;
+  const n = setQty(editing, (state.inv[editing]||0)+d);
+  $('mN').value = n;
+  if(n===0) closeEdit();
+}
+$('inv').onclick = e=>{ const b=e.target.closest('[data-e]'); if(b) openEdit(b.dataset.e); };
+$('mM').onclick = ()=>stepEdit(-1);
+$('mP').onclick = ()=>stepEdit(1);
+$('mN').onchange = e=>{ if(!editing) return; const n=setQty(editing,e.target.value); e.target.value=n; if(n===0) closeEdit(); };
+$('mRm').onclick = ()=>{ if(editing){ setQty(editing,0); closeEdit(); } };
+$('mOk').onclick = ()=>{ if(editing) $('mN').dispatchEvent(new Event('change')); closeEdit(); };
+$('modal').onclick = e=>{ if(e.target.id==='modal') closeEdit(); };
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeEdit(); });
+
+$('clear').onclick = ()=>{ if(!Object.keys(state.inv).length || !confirm('Rimuovere tutti gli item?')) return; state.inv={}; save(); renderStats(); renderInv(); renderItems(); };
+
+$('cond').checked = state.cond; state.q=''; $('lvlR').value=state.level; $('lvlN').value=state.level;
+all();
+</script>
+</body>
+</html>
